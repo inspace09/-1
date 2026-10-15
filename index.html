@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="코팅 설비 생산 CSV를 읽어 생산 현황을 확인하는 대시보드">
+  <title>코팅 설비 생산 대시보드</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/dashboard.js" defer></script>
+</head>
+<body>
+  <div class="page-shell">
+    <!-- 공통 상단 영역: 브랜드와 화면의 용도를 표시합니다. -->
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="생산 대시보드 홈">
+        <span class="brand-mark" aria-hidden="true">P</span>
+        <span>Production<span class="brand-light"> Desk</span></span>
+      </a>
+      <span class="topbar-note">COATING LINE · DAILY REPORT</span>
+    </header>
+
+    <main class="main-content">
+      <!-- 페이지 제목과 파일 선택 버튼입니다. 버튼은 아래 숨겨진 input을 여는 label입니다. -->
+      <section class="page-heading" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">생산 현황 분석</p>
+          <h1 id="page-title">코팅 설비 생산 대시보드</h1>
+          <p class="page-description">생산일지 CSV를 불러와 설비별 생산 실적과 품질 현황을 확인하세요.</p>
+        </div>
+        <label class="upload-button" for="csv-file">
+          <span class="upload-icon" aria-hidden="true">↑</span>
+          <span>CSV 파일 여러 개 선택</span>
+          <input id="csv-file" type="file" accept=".csv,text/csv" multiple>
+        </label>
+      </section>
+
+      <!-- CSV 파일 처리 결과를 화면 및 스크린 리더에 알려 주는 상태 영역입니다. -->
+      <div id="file-status" class="file-status" role="status" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="status-message">생산일지 CSV 파일을 선택해 주세요.</span>
+      </div>
+
+      <!-- 대시보드 영역: 요약, 세 종류 차트, 설비 시간 비교표, NG 목록, 전체 생산일지 표입니다.
+           각 id는 js/dashboard.js가 계산 결과를 표시할 때 사용하는 연결 지점입니다. -->
+      <section class="dashboard-grid" aria-label="생산 분석 대시보드">
+        <!-- 요약 숫자 네 개와 업로드한 파일의 생산일자 범위를 표시합니다. -->
+        <article class="panel summary-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">KEY PERFORMANCE</p>
+              <h2>생산 요약</h2>
+            </div>
+            <span id="summary-period" class="period-label">파일을 선택하면 표시됩니다</span>
+          </div>
+          <div class="summary-cards">
+            <div class="metric-card metric-blue">
+              <div class="metric-topline"><span class="metric-label">총 롤 수</span><span class="metric-icon" aria-hidden="true">▤</span></div>
+              <p id="total-rolls" class="metric-value">—</p>
+              <p class="metric-caption">전체 생산 롤</p>
+            </div>
+            <div class="metric-card metric-red">
+              <div class="metric-topline"><span class="metric-label">불량률</span><span class="metric-icon" aria-hidden="true">!</span></div>
+              <p id="defect-rate" class="metric-value">—</p>
+              <p id="defect-count" class="metric-caption">NG 판정 롤</p>
+            </div>
+            <div class="metric-card metric-green">
+              <div class="metric-topline"><span class="metric-label">가동률</span><span class="metric-icon" aria-hidden="true">◷</span></div>
+              <p id="operation-rate" class="metric-value">—</p>
+              <p class="metric-caption">생산시간 ÷ (생산시간 + 로스시간)</p>
+            </div>
+            <div class="metric-card metric-amber">
+              <div class="metric-topline"><span class="metric-label">총 로스시간</span><span class="metric-icon" aria-hidden="true">◴</span></div>
+              <p id="total-loss" class="metric-value">—</p>
+              <p class="metric-caption">생산일지 합계 · 분</p>
+            </div>
+          </div>
+        </article>
+
+        <!-- 네 가지 생산 시각 자료를 같은 묶음과 기준선 안에서 빠르게 비교합니다. -->
+        <section class="visualization-section" aria-labelledby="visualization-title">
+          <div class="visualization-heading">
+            <div>
+              <p class="eyebrow">PRODUCTION OVERVIEW</p>
+              <h2 id="visualization-title">생산 현황 한눈에 보기</h2>
+            </div>
+            <span class="visualization-hint">막대에 마우스를 올리면 상세 값을 확인할 수 있습니다.</span>
+          </div>
+          <div class="visualization-grid">
+            <!-- 설비별 롤 수를 설비 이름순 세로 막대로 보여 주는 차트입니다. -->
+            <article class="panel chart-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">BY EQUIPMENT</p>
+                  <h3>설비별 생산 롤 수</h3>
+                </div>
+                <span class="chart-unit">이름순 · 롤</span>
+              </div>
+              <div id="equipment-chart" class="bar-chart empty-chart">
+                <p class="empty-message">CSV 파일을 선택하면 설비별 실적이 표시됩니다.</p>
+              </div>
+            </article>
+
+            <!-- 생산모델별 롤 수를 모델 이름순 세로 막대로 보여 주는 차트입니다. -->
+            <article class="panel chart-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">BY PRODUCTION MODEL</p>
+                  <h3>생산모델별 생산 롤 수</h3>
+                </div>
+                <span class="chart-unit">이름순 · 롤</span>
+              </div>
+              <div id="model-chart" class="bar-chart empty-chart">
+                <p class="empty-message">CSV 파일을 선택하면 모델별 실적이 표시됩니다.</p>
+              </div>
+            </article>
+
+            <!-- 설비별 생산시간과 로스시간을 같은 높이 기준에서 비교합니다. -->
+            <article class="panel chart-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">EQUIPMENT TIME</p>
+                  <h3>생산시간 · 로스시간</h3>
+                </div>
+                <div class="time-chart-legend" aria-label="그래프 범례">
+                  <span><i class="time-legend-swatch production-swatch" aria-hidden="true"></i>생산</span>
+                  <span><i class="time-legend-swatch loss-swatch" aria-hidden="true"></i>로스</span>
+                  <span class="chart-unit">분</span>
+                </div>
+              </div>
+              <div id="equipment-time-container" class="bar-chart empty-chart">
+                <div class="table-empty">
+                  <span class="empty-table-icon" aria-hidden="true">◷</span>
+                  <p>CSV 파일을 선택하면 설비별 시간이 표시됩니다.</p>
+                </div>
+              </div>
+            </article>
+
+            <!-- 날짜별 막대는 네 차트 중 가장 넓게 배치해 날짜 흐름을 한눈에 봅니다. -->
+            <article class="panel chart-panel date-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">BY PRODUCTION DATE</p>
+                  <h3>일자별 생산 롤 수</h3>
+                </div>
+                <span class="chart-unit">날짜순 · 롤</span>
+              </div>
+              <div id="date-chart" class="bar-chart empty-chart">
+                <p class="empty-message">CSV 파일을 선택하면 날짜별 실적이 표시됩니다.</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- 판정이 NG인 행만 모아 붉은색으로 강조하는 별도 목록입니다. -->
+        <article class="panel table-panel ng-panel">
+          <div class="section-heading table-heading">
+            <div>
+              <p class="eyebrow">QUALITY ALERT</p>
+              <h2>NG 항목 목록</h2>
+            </div>
+            <div class="table-legend"><span class="legend-swatch" aria-hidden="true"></span><span id="ng-list-count">NG 항목</span></div>
+          </div>
+          <div id="ng-table-container" class="table-container">
+            <div class="table-empty">
+              <span class="empty-table-icon" aria-hidden="true">!</span>
+              <p>CSV 파일을 선택하면 NG 항목이 표시됩니다.</p>
+            </div>
+          </div>
+        </article>
+
+        <!-- CSV의 전체 열과 행을 빠짐없이 보여 주는 생산일지 표입니다. -->
+        <article class="panel table-panel">
+          <div class="section-heading table-heading">
+            <div>
+              <p class="eyebrow">PRODUCTION LOG</p>
+              <h2>전체 롤 목록</h2>
+            </div>
+            <span id="all-roll-count" class="chart-unit">0개 롤</span>
+          </div>
+          <div id="table-container" class="table-container">
+            <div class="table-empty">
+              <span class="empty-table-icon" aria-hidden="true">▤</span>
+              <p>CSV 파일을 선택하면 생산일지 전체가 표시됩니다.</p>
+            </div>
+          </div>
+        </article>
+      </section>
+      <!-- 파일이 서버에 업로드되지 않는다는 점을 사용자에게 안내합니다. -->
+      <p class="privacy-note">파일은 이 브라우저에서만 읽으며 서버로 전송하지 않습니다.</p>
+    </main>
+  </div>
+</body>
+</html>
